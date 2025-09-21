@@ -1,0 +1,92 @@
+[
+{
+    "model": "library.author",
+    "pk": 1,
+    "fields": {
+        "first_name": "test",
+        "last_name": "test",
+        "birth_date": "2025-06-19"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 2,
+    "fields": {
+        "first_name": "Лев",
+        "last_name": "Толстой",
+        "birth_date": "1828-09-09"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 3,
+    "fields": {
+        "first_name": "Лев2",
+        "last_name": "Толстой2",
+        "birth_date": "1828-09-09"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 4,
+    "fields": {
+        "first_name": "Лев",
+        "last_name": "Толстой",
+        "birth_date": "1828-09-09"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 5,
+    "fields": {
+        "first_name": "Фёдор",
+        "last_name": "Достоевский",
+        "birth_date": "1821-11-11"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 6,
+    "fields": {
+        "first_name": "Фёдор",
+        "last_name": "Достоевский",
+        "birth_date": "1821-11-11"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 7,
+    "fields": {
+        "first_name": "allen",
+        "last_name": "carr",
+        "birth_date": "1821-11-11"
+    }
+},
+{
+    "model": "library.author",
+    "pk": 8,
+    "fields": {
+        "first_name": "steven",
+        "last_name": "king",
+        "birth_date": "1900-11-11"
+    }
+},
+{
+    "model": "library.book",
+    "pk": 1,
+    "fields": {
+        "title": "Преступление и наказание",
+        "publication_date": "1866-01-01",
+        "author": 6
+    }
+},
+{
+    "model": "library.book",
+    "pk": 3,
+    "fields": {
+        "title": "carry",
+        "publication_date": "1950-01-01",
+        "author": 8
+    }
+}
+]
