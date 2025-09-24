@@ -66,6 +66,8 @@ class ModelTests(TestCase):
 
     # --- Custom permissions объявлены в модели Book ---
     def test_book_custom_permissions_declared(self):
-        perms = dict(Book._meta.permissions)  # [('can_review_book', '...'), ...] -> dict
+        perms = dict(
+            Book._meta.permissions
+        )  # [('can_review_book', '...'), ...] -> dict
         self.assertIn("can_review_book", perms)
         self.assertIn("can_recommend_book", perms)
