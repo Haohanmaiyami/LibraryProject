@@ -120,7 +120,7 @@ jobs:
           # Потянуть последний образ
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
           
-          # Запуск: gunicorn внутри образа, SQLite по флагу (чтобы не возиться с Postgres)
+          # Запуск
           docker run -d --restart unless-stopped --name myapp \
             -p 80:8000 \
             -e DJANGO_SETTINGS_MODULE=config.settings \
@@ -128,12 +128,10 @@ jobs:
             -e DEBUG=0 \
             -e ALLOWED_HOSTS="${{ secrets.SERVER_IP }},127.0.0.1,localhost" \
             -e FORCE_SQLITE=1 \
+            -e USE_REDIS=0 \
             ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
           
-          # Миграции (на случай новых)
           docker exec myapp python manage.py migrate --noinput || true
-          
-          # Быстрая проверка
           curl -I http://127.0.0.1 || true
           EOF
 #  deploy:
