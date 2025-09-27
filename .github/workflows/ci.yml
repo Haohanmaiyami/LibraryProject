@@ -80,37 +80,36 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Deploy to server (SQLite mode for demo)
+      - name: Deploy to server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
-
-          # 0) Если на хосте есть nginx на :80 — тихо остановим
+          
+          # 0) убрать возможный nginx на :80
           sudo systemctl stop nginx 2>/dev/null || true
-
-          # 1) Освободим порт 80 от любых контейнеров
+          
+          # 1) освободить порт 80 от любых контейнеров
           for name in $(docker ps --format '{{.Names}} {{.Ports}}' | awk '/:80->/ {print $1}'); do
             docker stop "$name" || true
             docker rm   "$name" || true
           done
-
-          # 2) Удалим наш контейнер по имени в любом состоянии
+          
+          # 2) удалить старый myapp если есть
           docker ps -aq -f name=^myapp$ | xargs -r docker rm -f
-
-          # 3) Стянем свежий образ текущего коммита
+          
+          # 3) стянуть свежий образ
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-
-          # 4) Запускаем приложение на SQLite (учебный вариант для проверки доступности по IP)
+          
+          # 4) запустить (gunicorn внутри образа), публикуем 8000 -> 80
           docker run -d --restart unless-stopped --name myapp \
             -p 80:8000 \
             -e DJANGO_SETTINGS_MODULE=config.settings \
-            -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
-            -e DEBUG=0 \
-            -e ALLOWED_HOSTS="${{ secrets.SERVER_IP }},127.0.0.1,localhost" \
+            -e SECRET_KEY='${{ secrets.SECRET_KEY }}' \
+            -e ALLOWED_HOSTS='${{ secrets.SERVER_IP }},127.0.0.1,localhost' \
             -e FORCE_SQLITE=1 \
             ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-
-          # 5) Применим миграции (на всякий случай) и проверим локально
+          
+          # 5) миграции + быстрая проверка
           docker exec myapp python manage.py migrate --noinput || true
           curl -I http://127.0.0.1 || true
           EOF
