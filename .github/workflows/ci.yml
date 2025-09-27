@@ -83,8 +83,23 @@ jobs:
       - name: Deploy to server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          set -e
+          
+          # 0) Если на голом сервере крутится nginx на :80 — погасим (тихо, если нет)
+          sudo systemctl stop nginx 2>/dev/null || true
+          
+          # 1) Убить ВСЕ контейнеры, публикующие порт 80 (не только myapp)
+          for name in $(docker ps --format '{{.Names}} {{.Ports}}' | awk '/:80->/ {print $1}'); do
+            docker stop "$name" || true
+            docker rm   "$name" || true
+          done
+          
+          # 2) Удалить контейнер myapp в любом состоянии (running/exited), если вдруг остался
+          docker ps -aq -f name=^myapp$ | xargs -r docker rm -f
+          
+          # 3) Подтянуть образ и запустить
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          docker stop myapp || true
-          docker rm myapp || true
-          docker run -d --name myapp -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          # советую добавить автоперезапуск, чтобы сервис не падал после ребута
+          docker run -d --restart unless-stopped --name myapp -p 80:8000 \
+            ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
           EOF
