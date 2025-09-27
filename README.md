@@ -35,3 +35,7 @@
    ```bash
    docker pull <DOCKER_HUB_USERNAME>/myapp:<TAG>
    docker run -d --name myapp -p 80:8000 <DOCKER_HUB_USERNAME>/myapp:<TAG>
+   
+
+
+Приложение доступно по IP, при обращении к корню возвращается 404, но рабочие эндпоинты доступны (например, /admin/)
