@@ -85,21 +85,25 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
           
-          # 0) Если на голом сервере крутится nginx на :80 — погасим (тихо, если нет)
+          # 0) Если на хосте есть nginx на :80 — тихо остановим
           sudo systemctl stop nginx 2>/dev/null || true
           
-          # 1) Убить ВСЕ контейнеры, публикующие порт 80 (не только myapp)
+          # 1) Освободим порт 80 от любых контейнеров
           for name in $(docker ps --format '{{.Names}} {{.Ports}}' | awk '/:80->/ {print $1}'); do
             docker stop "$name" || true
             docker rm   "$name" || true
           done
           
-          # 2) Удалить контейнер myapp в любом состоянии (running/exited), если вдруг остался
+          # 2) Удалим наш контейнер по имени в любом состоянии
           docker ps -aq -f name=^myapp$ | xargs -r docker rm -f
           
-          # 3) Подтянуть образ и запустить
+          # 3) Стянем свежий образ текущего коммита
           docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          # советую добавить автоперезапуск, чтобы сервис не падал после ребута
-          docker run -d --restart unless-stopped --name myapp -p 80:8000 \
+          
+          # 4) Запустим приложение (gunicorn внутри образа), публикуем 8000 -> 80
+          docker run -d --restart unless-stopped --name myapp \
+            -p 80:8000 \
+            -e DJANGO_SETTINGS_MODULE=config.settings \
+            -e ALLOWED_HOSTS="${{ secrets.SERVER_IP }},127.0.0.1,localhost" \
             ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
           EOF
