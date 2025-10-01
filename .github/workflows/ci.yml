@@ -102,17 +102,17 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: |
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
           set -e
           cd ~/app
           
-          # 1) Освободим порт 80
+          # 0) Освободить порт 80 (и v6 :::80)
           sudo systemctl stop nginx 2>/dev/null || true
-          docker ps --format '{{.ID}} {{.Ports}}' \
-          | awk '/(^|, )0\.0\.0\.0:80->|(^|, ):::80->/ {print \$1}' \
-          | xargs -r -I{} sh -c 'docker stop "{}" || true; docker rm "{}" || true'
+          sudo systemctl disable --now nginx 2>/dev/null || true
+          # убрать любые контейнеры, публикующие 80
+          docker ps --format '{{.ID}} {{.Ports}}' | awk '/:80->/ {print $1}' | xargs -r docker rm -f || true
           
-          # 2) Собираем .env для web-сервиса (значения подставятся здесь, на раннере)
+          # 1) Сформировать .env для web
           cat > .env <<EENV
           SECRET_KEY=${SECRET_KEY}
           DEBUG=0
@@ -127,14 +127,17 @@ jobs:
           REDIS_URL=redis://redis:6379/0
           EENV
           
-          # 3) Перезапуск docker compose
-          export WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
-          echo "Using WEB_IMAGE=\$WEB_IMAGE"
+          # 2) Убедиться, что используем свежий образ
+          export WEB_IMAGE="${DOCKER_HUB_USERNAME}/myapp:latest"
+          echo "Using WEB_IMAGE=$WEB_IMAGE"
           
+          # 3) Перезапуск через docker compose
           docker compose down --remove-orphans || true
           docker compose pull || true
           docker compose up -d --build
           
+          echo "Listening on 80 now:"
+          sudo ss -ltnp '( sport = :80 )' || true
           docker compose ps
           curl -I http://127.0.0.1 || true
           EOF
