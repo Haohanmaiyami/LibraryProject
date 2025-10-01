@@ -78,36 +78,29 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
+      - name: Copy compose and nginx to server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'mkdir -p ~/app/nginx'
+          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/docker-compose.yml
+          scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
+
       - name: Deploy with docker-compose
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
-          cd ~/app || mkdir -p ~/app && cd ~/app
-          
-          # Копируем compose и конфиг
-          rm -f docker-compose.yml
-          rm -rf nginx
-          mkdir -p nginx
-          EOF
-          
-          scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/docker-compose.yml
-          scp nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
-          
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           cd ~/app
-          
-          # Экспортируем образ для web
           export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
           
-          # Перезапуск через docker compose
           docker compose down || true
           docker compose pull || true
           docker compose up -d --build
-          
           docker compose ps
           EOF
