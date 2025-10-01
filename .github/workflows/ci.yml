@@ -122,7 +122,8 @@ jobs:
             EENV
             
             # подтягиваем актуальный образ
-            export WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
+            export WEB_IMAGE="${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest"
+            echo "Using WEB_IMAGE=$WEB_IMAGE"
             
             docker compose down || true
             docker compose pull || true
