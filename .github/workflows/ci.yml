@@ -97,10 +97,31 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
           cd ~/app
-          export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
           
-          docker compose down || true
-          docker compose pull || true
-          docker compose up -d --build
-          docker compose ps
-          EOF
+          cat > .env <<EENV
+        SECRET_KEY=${{ secrets.SECRET_KEY }}
+        DEBUG=0
+        ALLOWED_HOSTS=${{ secrets.SERVER_IP }},127.0.0.1,localhost
+
+        # Postgres (имена должны совпадать с тем, что ожидает твой settings.py)
+        NAME=${{ secrets.DB_NAME }}
+        USER=${{ secrets.DB_USER }}
+        PASSWORD=${{ secrets.DB_PASSWORD }}
+        HOST=db
+        PORT=5432
+
+        # Redis
+        REDIS_URL=redis://redis:6379/0
+        EENV
+        
+        # 2) Образ веба, который мы запушили в job build
+        export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
+        
+        # 3) Перезапуск через compose
+        docker compose down || true
+        docker compose pull || true
+        docker compose up -d --build
+        
+        # 4) Проверка
+        docker compose ps
+        EOF
