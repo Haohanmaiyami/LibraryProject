@@ -93,47 +93,40 @@ jobs:
           scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
 
       - name: Deploy with docker-compose
-      env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        SERVER_IP: ${{ secrets.SERVER_IP }}
-        DB_NAME: ${{ secrets.DB_NAME }}
-        DB_USER: ${{ secrets.DB_USER }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          set -e
-          cd ~/app
-
-          # создаём .env, который читает web-сервис в docker-compose.yml
-          cat > .env <<EENV
-          # 👉 ЗАМЕНИТЬ: было SECRET_KEY=${{ secrets.SECRET_KEY }}
-          SECRET_KEY=${SECRET_KEY}
-
-          DEBUG=0
-
-          # 👉 ЗАМЕНИТЬ: было ALLOWED_HOSTS=${{ secrets.SERVER_IP }},127.0.0.1,localhost
-          ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
-
-          # Postgres (теперь тоже без ${{ ... }})
-          # 👉 ЗАМЕНИТЬ: NAME=${{ secrets.DB_NAME }}
-          NAME=${DB_NAME}
-          # 👉 ЗАМЕНИТЬ: USER=${{ secrets.DB_USER }}
-          USER=${DB_USER}
-          # 👉 ЗАМЕНИТЬ: PASSWORD=${{ secrets.DB_PASSWORD }}
-          PASSWORD=${DB_PASSWORD}
-          HOST=db
-          PORT=5432
-
-          # Redis
-          REDIS_URL=redis://redis:6379/0
-          EENV
-
-          # образ веба, который ты пушишь в шаге build
-          export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
-
-          docker compose down || true
-          docker compose pull || true
-          docker compose up -d --build
-
-          docker compose ps
-          EOF
+            ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
+            set -e
+            cd ~/app
+            
+            # создаём .env для web-сервиса
+            cat > .env <<EENV
+            SECRET_KEY=${SECRET_KEY}
+            DEBUG=0
+            ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
+            
+            NAME=${DB_NAME}
+            USER=${DB_USER}
+            PASSWORD=${DB_PASSWORD}
+            HOST=db
+            PORT=5432
+            
+            REDIS_URL=redis://redis:6379/0
+            EENV
+            
+            # подтягиваем актуальный образ
+            export WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
+            
+            docker compose down || true
+            docker compose pull || true
+            docker compose up -d --build
+            
+            docker compose ps
+            EOF
