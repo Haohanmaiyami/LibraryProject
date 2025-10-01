@@ -93,13 +93,19 @@ jobs:
           scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
 
       - name: Deploy with docker-compose
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
           cd ~/app
           
           cat > .env <<EENV
-        SECRET_KEY=${{ secrets.SECRET_KEY }}
+        SECRET_KEY=${SECRET_KEY}
         DEBUG=0
         ALLOWED_HOSTS=${{ secrets.SERVER_IP }},127.0.0.1,localhost
 
