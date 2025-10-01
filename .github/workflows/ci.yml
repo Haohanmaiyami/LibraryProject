@@ -93,41 +93,47 @@ jobs:
           scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
 
       - name: Deploy with docker-compose
-        env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      env:
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
           set -e
           cd ~/app
-          
+
+          # создаём .env, который читает web-сервис в docker-compose.yml
           cat > .env <<EENV
-        SECRET_KEY=${SECRET_KEY}
-        DEBUG=0
-        ALLOWED_HOSTS=${{ secrets.SERVER_IP }},127.0.0.1,localhost
+          # 👉 ЗАМЕНИТЬ: было SECRET_KEY=${{ secrets.SECRET_KEY }}
+          SECRET_KEY=${SECRET_KEY}
 
-        # Postgres (имена должны совпадать с тем, что ожидает твой settings.py)
-        NAME=${{ secrets.DB_NAME }}
-        USER=${{ secrets.DB_USER }}
-        PASSWORD=${{ secrets.DB_PASSWORD }}
-        HOST=db
-        PORT=5432
+          DEBUG=0
 
-        # Redis
-        REDIS_URL=redis://redis:6379/0
-        EENV
-        
-        # 2) Образ веба, который мы запушили в job build
-        export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
-        
-        # 3) Перезапуск через compose
-        docker compose down || true
-        docker compose pull || true
-        docker compose up -d --build
-        
-        # 4) Проверка
-        docker compose ps
-        EOF
+          # 👉 ЗАМЕНИТЬ: было ALLOWED_HOSTS=${{ secrets.SERVER_IP }},127.0.0.1,localhost
+          ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
+
+          # Postgres (теперь тоже без ${{ ... }})
+          # 👉 ЗАМЕНИТЬ: NAME=${{ secrets.DB_NAME }}
+          NAME=${DB_NAME}
+          # 👉 ЗАМЕНИТЬ: USER=${{ secrets.DB_USER }}
+          USER=${DB_USER}
+          # 👉 ЗАМЕНИТЬ: PASSWORD=${{ secrets.DB_PASSWORD }}
+          PASSWORD=${DB_PASSWORD}
+          HOST=db
+          PORT=5432
+
+          # Redis
+          REDIS_URL=redis://redis:6379/0
+          EENV
+
+          # образ веба, который ты пушишь в шаге build
+          export WEB_IMAGE=${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
+
+          docker compose down || true
+          docker compose pull || true
+          docker compose up -d --build
+
+          docker compose ps
+          EOF
