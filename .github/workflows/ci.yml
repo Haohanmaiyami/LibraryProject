@@ -102,32 +102,39 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: |
-            ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
-            set -e
-            cd ~/app
-            
-            # создаём .env для web-сервиса
-            cat > .env <<EENV
-            SECRET_KEY=${SECRET_KEY}
-            DEBUG=0
-            ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
-            
-            NAME=${DB_NAME}
-            USER=${DB_USER}
-            PASSWORD=${DB_PASSWORD}
-            HOST=db
-            PORT=5432
-            
-            REDIS_URL=redis://redis:6379/0
-            EENV
-            
-            # подтягиваем актуальный образ
-            export WEB_IMAGE="${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest"
-            echo "Using WEB_IMAGE=$WEB_IMAGE"
-            
-            docker compose down || true
-            docker compose pull || true
-            docker compose up -d --build
-            
-            docker compose ps
-            EOF
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
+          set -e
+          cd ~/app
+          
+          # 1) Освободим порт 80
+          sudo systemctl stop nginx 2>/dev/null || true
+          docker ps --format '{{.ID}} {{.Ports}}' \
+          | awk '/(^|, )0\.0\.0\.0:80->|(^|, ):::80->/ {print \$1}' \
+          | xargs -r -I{} sh -c 'docker stop "{}" || true; docker rm "{}" || true'
+          
+          # 2) Собираем .env для web-сервиса (значения подставятся здесь, на раннере)
+          cat > .env <<EENV
+          SECRET_KEY=${SECRET_KEY}
+          DEBUG=0
+          ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
+          
+          NAME=${DB_NAME}
+          USER=${DB_USER}
+          PASSWORD=${DB_PASSWORD}
+          HOST=db
+          PORT=5432
+          
+          REDIS_URL=redis://redis:6379/0
+          EENV
+          
+          # 3) Перезапуск docker compose
+          export WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
+          echo "Using WEB_IMAGE=\$WEB_IMAGE"
+          
+          docker compose down --remove-orphans || true
+          docker compose pull || true
+          docker compose up -d --build
+          
+          docker compose ps
+          curl -I http://127.0.0.1 || true
+          EOF
