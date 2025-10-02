@@ -113,32 +113,32 @@ jobs:
           
             # .env для compose и Django — единый источник (ВАЖНО: без отступов внутри heredoc)
             cat > .env <<EENV
-  SECRET_KEY=${SECRET_KEY}
-  DEBUG=0
-  ALLOWED_HOSTS=${ALLOWED_HOSTS}
+SECRET_KEY=${SECRET_KEY}
+DEBUG=0
+ALLOWED_HOSTS=${ALLOWED_HOSTS}
 
-  # Django DB
-  NAME=${DB_NAME}
-  USER=${DB_USER}
-  PASSWORD=${DB_PASSWORD}
-  HOST=db
-  PORT=5432
+# Django DB
+NAME=${DB_NAME}
+USER=${DB_USER}
+PASSWORD=${DB_PASSWORD}
+HOST=db
+PORT=5432
 
-  # Redis
-  REDIS_URL=redis://redis:6379/0
+# Redis
+REDIS_URL=redis://redis:6379/0
 
-  # Postgres container
-  DB_NAME=${DB_NAME}
-  DB_USER=${DB_USER}
-  DB_PASSWORD=${DB_PASSWORD}
+# Postgres container
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
 
-  # Web image
-  WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
-  EENV
+# Web image
+WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
+EENV
   
-  docker compose pull || true
-  docker compose up -d --build
-  docker compose ps
-  curl -I http://127.0.0.1 || true
-  SSH
+            docker compose pull || true
+            docker compose up -d --build
+            docker compose ps
+            curl -I http://127.0.0.1 || true
+SSH
 
