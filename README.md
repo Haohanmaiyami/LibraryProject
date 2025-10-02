@@ -41,5 +41,39 @@
 Приложение доступно по IP, при обращении к корню возвращается 404, но рабочие эндпоинты доступны (например, /admin/)
 
 
-DONE
-done 2
+------------------------
+
+# Курс 9 Итоговое задание
+
+Учебный проект на Django Rest Framework с Docker Compose и CI/CD.
+
+## Локальный запуск
+```bash
+git clone https://github.com/Haohanmaiyami/LibraryProject.git
+cd LibraryProject
+cp .env.example .env   # заполнить переменные
+docker compose up -d --build
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
+```
+
+Приложение: http://127.0.0.1:8000
+
+## Сервер
+Развёрнутый проект доступен по адресу:
+ http://84.252.139.98
+
+## CI/CD
+Линтер flake8 и тесты python manage.py test
+
+Сборка и пуш Docker-образа в Docker Hub
+
+Автодеплой на сервер через docker compose up -d --build
+
+GitHub Secrets
+DOCKER_HUB_USERNAME, DOCKER_HUB_ACCESS_TOKEN,
+SSH_PRIVATE_KEY, SERVER_IP, SERVER_USER,
+SECRET_KEY, DB_NAME, DB_USER, DB_PASSWORD
+
+.................
+----------------
