@@ -102,42 +102,49 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
         run: |
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" << 'EOF'
-          set -e
-          cd ~/app
-          
-          # 0) Освободить порт 80 (и v6 :::80)
-          sudo systemctl stop nginx 2>/dev/null || true
-          sudo systemctl disable --now nginx 2>/dev/null || true
-          # убрать любые контейнеры, публикующие 80
-          docker ps --format '{{.ID}} {{.Ports}}' | awk '/:80->/ {print $1}' | xargs -r docker rm -f || true
-          
-          # 1) Сформировать .env для web
-          cat > .env <<EENV
-          SECRET_KEY=${SECRET_KEY}
-          DEBUG=0
-          ALLOWED_HOSTS=${SERVER_IP},127.0.0.1,localhost
-          
-          NAME=${DB_NAME}
-          USER=${DB_USER}
-          PASSWORD=${DB_PASSWORD}
-          HOST=db
-          PORT=5432
-          
-          REDIS_URL=redis://redis:6379/0
-          EENV
-          
-          # 2) Убедиться, что используем свежий образ
-          export WEB_IMAGE="${DOCKER_HUB_USERNAME}/myapp:latest"
-          echo "Using WEB_IMAGE=$WEB_IMAGE"
-          
-          # 3) Перезапуск через docker compose
-          docker compose down --remove-orphans || true
-          docker compose pull || true
-          docker compose up -d --build
-          
-          echo "Listening on 80 now:"
-          sudo ss -ltnp '( sport = :80 )' || true
-          docker compose ps
-          curl -I http://127.0.0.1 || true
-          EOF
+            ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
+            set -euo pipefail
+            
+            # Значения из GitHub Secrets (подставятся локально перед ssh)
+            SECRET_KEY="${SECRET_KEY}"
+            SERVER_IP="${SERVER_IP}"
+            DB_NAME="${DB_NAME}"
+            DB_USER="${DB_USER}"
+            DB_PASSWORD="${DB_PASSWORD}"
+            DOCKER_HUB_USERNAME="${DOCKER_HUB_USERNAME}"
+            
+            cd ~/app
+            
+            # Освободить 80 порт (и выключить системный nginx, если есть)
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo systemctl disable --now nginx 2>/dev/null || true
+            docker ps --format '{{.ID}} {{.Ports}}' | awk '/:80->/ {print \$1}' | xargs -r docker rm -f || true
+            
+            # Сформировать .env для web-сервиса
+            cat > .env <<EENV
+            SECRET_KEY=$SECRET_KEY
+            DEBUG=0
+            ALLOWED_HOSTS=$SERVER_IP,127.0.0.1,localhost
+            
+            NAME=$DB_NAME
+            USER=$DB_USER
+            PASSWORD=$DB_PASSWORD
+            HOST=db
+            PORT=5432
+            
+            REDIS_URL=redis://redis:6379/0
+            EENV
+            
+            # Образ веб-приложения (из Docker Hub)
+            export WEB_IMAGE="\$DOCKER_HUB_USERNAME/myapp:latest"
+            echo "Using WEB_IMAGE=\$WEB_IMAGE"
+            
+            docker compose down --remove-orphans || true
+            docker compose pull || true
+            docker compose up -d --build
+            
+            # Диагностика
+            sudo ss -ltnp '( sport = :80 )' || true
+            docker compose ps
+            curl -I http://127.0.0.1 || true
+            EOF
