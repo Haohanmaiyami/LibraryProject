@@ -103,7 +103,7 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           ALLOWED_HOSTS: ${{ secrets.SERVER_IP }},127.0.0.1,localhost
         run: |
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" 'bash -se' <<'SSH'
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" "SECRET_KEY='${SECRET_KEY}' DB_NAME='${DB_NAME}' DB_USER='${DB_USER}' DB_PASSWORD='${DB_PASSWORD}' DOCKER_HUB_USERNAME='${DOCKER_HUB_USERNAME}' ALLOWED_HOSTS='${ALLOWED_HOSTS}' bash -se" <<'SSH'
             set -euo pipefail
             cd ~/app
           
@@ -111,7 +111,7 @@ jobs:
             sudo systemctl stop nginx 2>/dev/null || true
             sudo systemctl disable --now nginx 2>/dev/null || true
           
-            # .env для compose и Django — единый источник
+            # .env для compose и Django — единый источник (ВАЖНО: без отступов внутри heredoc)
             cat > .env <<EENV
   SECRET_KEY=${SECRET_KEY}
   DEBUG=0
@@ -141,3 +141,4 @@ jobs:
   docker compose ps
   curl -I http://127.0.0.1 || true
   SSH
+
