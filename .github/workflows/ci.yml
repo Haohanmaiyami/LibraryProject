@@ -101,6 +101,7 @@ jobs:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          ALLOWED_HOSTS: ${{ secrets.SERVER_IP }},127.0.0.1,localhost
         run: |
             ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
             set -euo pipefail
