@@ -103,42 +103,36 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           ALLOWED_HOSTS: ${{ secrets.SERVER_IP }},127.0.0.1,localhost
         run: |
-          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" "SECRET_KEY='${SECRET_KEY}' DB_NAME='${DB_NAME}' DB_USER='${DB_USER}' DB_PASSWORD='${DB_PASSWORD}' DOCKER_HUB_USERNAME='${DOCKER_HUB_USERNAME}' ALLOWED_HOSTS='${ALLOWED_HOSTS}' bash -se" <<'SSH'
-            set -euo pipefail
-            cd ~/app
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
+          set -euo pipefail
+          cd ~/app
           
-            # освободить 80 порт от системного nginx
-            sudo systemctl stop nginx 2>/dev/null || true
-            sudo systemctl disable --now nginx 2>/dev/null || true
+          sudo systemctl stop nginx 2>/dev/null || true
+          sudo systemctl disable --now nginx 2>/dev/null || true
           
-            # .env для compose и Django — единый источник (ВАЖНО: без отступов внутри heredoc)
-            cat > .env <<EENV
-              SECRET_KEY=${SECRET_KEY}
-              DEBUG=0
-              ALLOWED_HOSTS=${ALLOWED_HOSTS}
-              
-              # Django DB
-              NAME=${DB_NAME}
-              USER=${DB_USER}
-              PASSWORD=${DB_PASSWORD}
-              HOST=db
-              PORT=5432
-              
-              # Redis
-              REDIS_URL=redis://redis:6379/0
-              
-              # Postgres container
-              DB_NAME=${DB_NAME}
-              DB_USER=${DB_USER}
-              DB_PASSWORD=${DB_PASSWORD}
-              
-              # Web image
-              WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
-EENV
+          cat > .env <<EENV
+  SECRET_KEY=${SECRET_KEY}
+  DEBUG=0
+  ALLOWED_HOSTS=${ALLOWED_HOSTS}
+
+  NAME=${DB_NAME}
+  USER=${DB_USER}
+  PASSWORD=${DB_PASSWORD}
+  HOST=db
+  PORT=5432
+
+  REDIS_URL=redis://redis:6379/0
+
+  DB_NAME=${DB_NAME}
+  DB_USER=${DB_USER}
+  DB_PASSWORD=${DB_PASSWORD}
+
+  WEB_IMAGE=${DOCKER_HUB_USERNAME}/myapp:latest
+  EENV
   
-            docker compose pull || true
-            docker compose up -d --build
-            docker compose ps
-            curl -I http://127.0.0.1 || true
-SSH
+  docker compose pull || true
+  docker compose up -d --build
+  docker compose ps
+  curl -I http://127.0.0.1 || true
+  EOF
 
