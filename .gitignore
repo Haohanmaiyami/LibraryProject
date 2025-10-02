@@ -1,25 +1,23 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-
-# Virtual env
-.venv/
-venv/
-
-# IDE
+# OS / IDE
+.DS_Store
 .idea/
 .vscode/
 
-# System files
-.DS_Store
+# Python
+__pycache__/
+*.pyc
 
-# Environment
+# Venv
+venv/
+.venv/
+
+# Django build artifacts
+staticfiles/
+media/
+
+# Docker / Redis
+dump.rdb
+
+# Secrets
 .env
 *.env
-.env.*
-
-# Coverage / pytest
-.coverage
-htmlcov/
-*.pytest_cache/
