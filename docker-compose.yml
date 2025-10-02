@@ -1,6 +1,6 @@
 services:
   web:
-    image: ${WEB_IMAGE}
+    image: ${WEB_IMAGE:-haohanmaiyami/myapp:latest}
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
