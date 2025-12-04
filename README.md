@@ -1,3 +1,64 @@
+# 📚 LibraryProject – Django REST API with CI/CD
+
+Educational project that demonstrates a small **library service API** plus a full **Docker + GitHub Actions** delivery pipeline.
+
+## What this project does
+
+- Exposes a simple Django REST API for a library (books/authors, admin panel at `/admin/`).
+- Runs inside Docker containers (web + database via `docker-compose.yml`).
+- Uses **GitHub Actions** to:
+  - run `flake8` (lint),
+  - run Django tests (`python manage.py test`),
+  - build and push a Docker image to **Docker Hub**,
+  - deploy to a remote server via SSH and `docker compose`.
+
+## Tech stack
+
+- Python 3.x, Django, Django REST Framework
+- PostgreSQL (in Docker), SQLite for tests
+- Docker & Docker Compose
+- GitHub Actions
+- flake8 for linting
+
+## Quick start (Docker, local)
+
+```bash
+git clone https://github.com/Haohanmaiyami/LibraryProject.git
+cd LibraryProject
+cp .env.example .env  # fill in variables
+docker compose up -d --build
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
+```
+
+App: http://127.0.0.1:8000  
+Admin: http://127.0.0.1:8000/admin/
+
+## CI/CD in short
+
+Workflow: `.github/workflows/ci.yml`
+
+On push / pull request:
+
+1. **lint** – flake8
+2. **test** – Django tests
+3. **build** – build & push Docker image to Docker Hub
+4. **deploy** – SSH to server and run `docker compose up -d --build`
+
+Secrets used (examples): `DOCKER_HUB_USERNAME`, `DOCKER_HUB_ACCESS_TOKEN`, `SSH_PRIVATE_KEY`, `SERVER_IP`, `SERVER_USER`, `SECRET_KEY`, DB credentials.
+
+This repo can be used as a compact example of a Django REST project with Docker and a working CI/CD pipeline.
+
+
+________________________________________________________
+____________________________
+____________________________
+____________________________
+
+
+
+
+
 # LibraryProject
 
 Домашнее задание по настройке CI/CD для Django-приложения.
