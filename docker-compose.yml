@@ -1,9 +1,11 @@
 services:
   web:
-    build: .
-    command: sh -c "python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000"
+    image: ${WEB_IMAGE:-haohanmaiyami/myapp:latest}
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
-      - .:/app
       - static_volume:/app/staticfiles
     expose:
       - "8000"
@@ -12,14 +14,15 @@ services:
       - redis
     env_file:
       - ./.env
+    environment:
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
 
   nginx:
-    build:
-      context: ./nginx
+    image: nginx:latest
     ports:
       - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_volume:/app/staticfiles
     depends_on:
       - web
@@ -28,15 +31,15 @@ services:
     image: postgres:16
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    env_file:
-      - ./.env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
 
   redis:
     image: redis:7
     volumes:
       - redis_data:/data
-    env_file:
-      - ./.env
 
 volumes:
   postgres_data:

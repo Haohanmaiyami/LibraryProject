@@ -27,8 +27,6 @@ jobs:
     needs: lint
     env:
       DJANGO_SETTINGS_MODULE: config.settings
-      # чтобы Django не требовал реальный Postgres и спокойно создал test DB на sqlite,
-      # у тебя в settings есть ветка "if 'test' in sys.argv" -> sqlite
       SECRET_KEY: dummy
       DEBUG: "1"
     steps:
@@ -65,26 +63,89 @@ jobs:
       - name: Log in Docker hub
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
-      - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} .
+      - name: Build Docker image (sha + latest)
+        run: |
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} .
+          docker tag  ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
 
-      - name: Push Docker image in Docker hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+      - name: Push Docker image (sha + latest)
+        run: |
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
+
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Deploy to server
+      - name: Copy compose and nginx to server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          docker stop myapp || true
-          docker rm myapp || true
-          docker run -d --name myapp -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} 'mkdir -p ~/app/nginx'
+          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/docker-compose.yml
+          scp -o StrictHostKeyChecking=no nginx/nginx.conf ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:~/app/nginx/nginx.conf
+      - name: Deploy with docker-compose
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          ALLOWED_HOSTS: ${{ secrets.SERVER_IP }},127.0.0.1,localhost
+        run: |
+          ssh -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" <<EOF
+          set -euo pipefail
+          
+          # Значения из GitHub Secrets (подставятся локально перед ssh)
+          SECRET_KEY="${SECRET_KEY}"
+          SERVER_IP="${SERVER_IP}"
+          DB_NAME="${DB_NAME}"
+          DB_USER="${DB_USER}"
+          DB_PASSWORD="${DB_PASSWORD}"
+          DOCKER_HUB_USERNAME="${DOCKER_HUB_USERNAME}"
+          
+          cd ~/app
+          
+          # Освободить 80 порт (и выключить системный nginx, если есть)
+          sudo systemctl stop nginx 2>/dev/null || true
+          sudo systemctl disable --now nginx 2>/dev/null || true
+          docker ps --format '{{.ID}} {{.Ports}}' | awk '/:80->/ {print \$1}' | xargs -r docker rm -f || true
+          
+          # Сформировать .env для web-сервиса
+          cat > .env <<EENV
+          SECRET_KEY=$SECRET_KEY
+          DEBUG=0
+          ALLOWED_HOSTS=$SERVER_IP,127.0.0.1,localhost
+          
+          NAME=$DB_NAME
+          USER=$DB_USER
+          PASSWORD=$DB_PASSWORD
+          HOST=db
+          PORT=5432
+          
+          REDIS_URL=redis://redis:6379/0
+          EENV
+          
+          # Образ веб-приложения (из Docker Hub)
+          export WEB_IMAGE="\$DOCKER_HUB_USERNAME/myapp:latest"
+          echo "Using WEB_IMAGE=\$WEB_IMAGE"
+          
+          docker compose down --remove-orphans || true
+          docker compose pull || true
+          docker compose up -d --build
+          
+          # Диагностика
+          sudo ss -ltnp '( sport = :80 )' || true
+          docker compose ps
+          curl -I http://127.0.0.1 || true
           EOF
+
