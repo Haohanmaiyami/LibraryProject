@@ -1,6 +1,6 @@
 # 📚 LibraryProject – Django REST API with CI/CD
 
-Educational project that demonstrates a small **library service API** plus a full **Docker + GitHub Actions** delivery pipeline.
+It’s a training project of an online library built with Django: it manages books, authors and reviews, and has a fully configured Docker + CI/CD pipeline — the code is automatically linted and tested, built into a Docker image, and deployed to a remote server via GitHub Actions.
 
 ## What this project does
 
